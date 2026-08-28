@@ -343,7 +343,14 @@ body.solid-foods-page {
   border: 1px solid var(--line);
   border-radius: 0.65rem;
 }
-.allergen-card.is-tried { border-color: color-mix(in srgb, #388b5b 55%, var(--line)); }
+.allergen-card.is-tried {
+  border-color: color-mix(in srgb, #388b5b 68%, var(--line));
+  background:
+    linear-gradient(135deg,
+      color-mix(in srgb, #75c995 27%, var(--surface)),
+      color-mix(in srgb, #bce9ca 18%, var(--surface)));
+  box-shadow: inset 4px 0 0 #4da86d;
+}
 .allergen-name strong, .allergen-name span { display: block; }
 .allergen-name strong { font-size: 0.95rem; }
 .allergen-name span { margin-top: 0.16rem; color: var(--muted); font-size: 0.7rem; }
