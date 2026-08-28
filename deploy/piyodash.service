@@ -5,8 +5,8 @@ After=network-online.target
 
 [Service]
 Type=simple
-User=exedev
-Group=exedev
+User=piyodash
+Group=piyodash
 WorkingDirectory=/opt/piyodash
 Environment=PORT=8000
 Environment=TZ=Asia/Tokyo

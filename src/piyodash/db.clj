@@ -58,3 +58,19 @@
    :milk (latest-event ds [(event-types :milk)] baby-id)
    :breastfeed (latest-event ds [(event-types :breastfeed)] baby-id)
    :diaper (latest-event ds [(event-types :pee) (event-types :poop)] baby-id)})
+
+(defn solid-food-events
+  "Returns non-deleted solid-food events, oldest first. PiyoLog stores solid
+  food as baby event type 9 and records the meal as free text in memo."
+  [ds baby-id]
+  (let [[baby-sql baby-params] (baby-clause baby-id)
+        sql (str "SELECT baby_id, event_time, modified_at, "
+                 "COALESCE(json_extract(payload_json, '$.memo'), '') AS memo "
+                 "FROM records "
+                 "WHERE entity = 'baby_event' AND deleted = 0 "
+                 "AND CAST(json_extract(payload_json, '$.type') AS INTEGER) = 9"
+                 baby-sql
+                 " ORDER BY COALESCE(event_time, modified_at) ASC")]
+    (jdbc/execute! ds
+                   (into [sql] baby-params)
+                   {:builder-fn rs/as-unqualified-lower-maps})))

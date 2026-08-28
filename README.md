@@ -100,6 +100,12 @@ milk and breastfeeding are on the bottom:
 - time since breastfeeding;
 - time since the newest pee or poop, including which kind it was.
 
+Open `/solidfoods` for the solid-food history. It recognizes ingredients in
+type-9 meal notes across
+Japanese commas, spaces, newlines, and common recipe phrases. The page shows
+the first and latest matching dates, meal count, foods not yet found in the
+notes, and a separate allergen checklist. “Not recorded” is not a diagnosis.
+
 Datastar requests a fresh server-rendered dashboard every second. The database
 remains the source of truth; there is no browser-side application model.
 
@@ -115,3 +121,10 @@ BABY_ID=the-id PIYOLOG_DB=/absolute/path/piyolog.sqlite3 clojure -M:run
 The server listens on all network interfaces. Keep it on a trusted LAN or
 behind a private VPN/reverse proxy because the dashboard contains personal
 care data and currently has no login screen. Set `PORT` to change port 3000.
+
+## Privacy before committing
+
+The repository ignores `.piyolog.json`, SQLite databases and their WAL/SHM
+files, `.env` files, private keys, caches, and build output. Do not add real
+PiyoLog IDs, hostnames, credentials, database snapshots, or meal data to Git.
+The values in tests are synthetic placeholders.

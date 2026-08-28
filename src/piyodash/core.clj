@@ -64,6 +64,17 @@
       (catch Exception error
         (view/unavailable-dashboard (or (ex-message error) "Could not read SQLite"))))))
 
+(defn- solid-foods-view [{:keys [database baby-id zone]}]
+  (if-not (db/database-exists? database)
+    (view/unavailable-solid-foods (str "No database found at " database))
+    (try
+      (view/solid-foods-content
+       (db/solid-food-events (db/datasource database) baby-id)
+       zone)
+      (catch Exception error
+        (view/unavailable-solid-foods
+         (or (ex-message error) "Could not read SQLite"))))))
+
 (defn handler [request]
   (let [settings (config)]
     (case [(:request-method request) (:uri request)]
@@ -71,6 +82,12 @@
                     :headers {"content-type" "text/html; charset=utf-8"}
                     :body (view/page (dashboard-view settings))}
       [:get "/dashboard"] (patch-response (view/render (dashboard-view settings)))
+      [:get "/solidfoods"] {:status 200
+                              :headers {"content-type" "text/html; charset=utf-8"}
+                              :body (view/solid-foods-page
+                                     (solid-foods-view settings))}
+      [:get "/solidfoods/content"]
+      (patch-response (view/render (solid-foods-view settings)))
       [:get "/app.css"] {:status 200
                            :headers {"content-type" "text/css; charset=utf-8"
                                      "cache-control" "no-cache"}

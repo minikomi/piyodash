@@ -28,3 +28,23 @@
       (is (= 120.0 (:amount (:milk events))))
       (is (= 2000 (:event_time (:breastfeed events))))
       (is (= 6000 (:event_time (:diaper events)))))))
+
+(deftest finds-solid-food-events
+  (let [path (temp-database)
+        ds (db/datasource path)]
+    (jdbc/execute! ds ["CREATE TABLE records (
+                          entity TEXT, baby_id TEXT, event_time INTEGER,
+                          modified_at INTEGER, deleted INTEGER, payload_json TEXT)"])
+    (doseq [[baby time type deleted memo]
+            [["one" 3000 9 0 "豆腐、りんご"]
+             ["one" 1000 9 0 "お粥"]
+             ["one" 2000 2 0 "not food"]
+             ["one" 4000 9 1 "deleted"]
+             ["two" 5000 9 0 "other baby"]]]
+      (jdbc/execute! ds
+                     ["INSERT INTO records VALUES ('baby_event', ?, ?, ?, ?, ?)"
+                      baby time time deleted
+                      (str "{\"type\":" type ",\"memo\":\"" memo "\"}")]))
+    (let [events (db/solid-food-events ds "one")]
+      (is (= [1000 3000] (mapv :event_time events)))
+      (is (= ["お粥" "豆腐、りんご"] (mapv :memo events))))))

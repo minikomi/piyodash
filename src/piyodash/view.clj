@@ -1,6 +1,7 @@
 (ns piyodash.view
   (:require [hiccup2.core :as h]
-            [piyodash.db :as db])
+            [piyodash.db :as db]
+            [piyodash.solid-foods :as foods])
   (:import [java.time Duration Instant ZoneId]
            [java.time.format DateTimeFormatter]))
 
@@ -213,7 +214,7 @@
     [:p.translation {:lang "en"} (t :en :waiting-db)]
     [:p.detail message]]])
 
-(defn page [dashboard-html]
+(defn- page-document [{:keys [title body-class nav-href nav-ja nav-en]} content]
   (str
    "<!doctype html>"
    (h/html
@@ -227,14 +228,25 @@
       [:meta {:name "apple-mobile-web-app-status-bar-style"
               :content "black-translucent"}]
       [:meta {:name "apple-mobile-web-app-title" :content "PiyoDash"}]
-      [:title "PiyoDash"]
+      [:title title]
       [:link {:rel "manifest" :href "/manifest.webmanifest"}]
       [:script
        (h/raw
         "(()=>{const saved=localStorage.getItem('piyodash-theme');const theme=saved||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.dataset.theme=theme;window.setPiyoTheme=(next)=>{document.documentElement.dataset.theme=next;localStorage.setItem('piyodash-theme',next);document.querySelector('#theme-color')?.setAttribute('content',next==='dark'?'#161714':'#f2f0e9');document.querySelector('#theme-toggle')?.setAttribute('aria-label',next==='dark'?'Use light mode':'Use dark mode')};window.togglePiyoTheme=()=>setPiyoTheme(document.documentElement.dataset.theme==='dark'?'light':'dark')})()")]
-      [:link {:rel "stylesheet" :href "/app.css?v=9"}]
+      [:link {:rel "stylesheet" :href "/app.css?v=10"}]
       [:script {:type "module" :src datastar-url}]]
-     [:body
+     [:body (cond-> {} body-class (assoc :class body-class))
+      (when nav-href
+        [:a.page-nav {:href nav-href :aria-label (str nav-ja " / " nav-en)
+                      :title (str nav-ja " / " nav-en)}
+         [:svg.rice-bowl-icon
+          {:viewBox "0 0 24 24" :fill "none" :stroke "currentColor"
+           :stroke-width "1.8" :stroke-linecap "round"
+           :stroke-linejoin "round" :aria-hidden "true"}
+          [:path {:d "M5.5 11a6.5 6.5 0 0 1 13 0"}]
+          [:path {:d "M3.5 11h17"}]
+          [:path {:d "M5 11c.45 5 2.9 8 7 8s6.55-3 7-8"}]
+          [:path {:d "M9 7.2c.4.4.6.8.6 1.2M12 5.2c.4.4.6.8.6 1.2M15.1 7.1c.4.4.6.8.6 1.2"}]]])
       [:button#theme-toggle
        {:type "button" :aria-label "Switch color mode"
         :onclick "togglePiyoTheme()"}
@@ -243,8 +255,174 @@
         [:path {:d "M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.65 17.65l1.42 1.42M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.65 6.35l1.42-1.42"}]]
        [:svg.moon-icon {:viewBox "0 0 24 24" :aria-hidden "true"}
         [:path {:d "M20.2 15.2A8.5 8.5 0 0 1 8.8 3.8a8.5 8.5 0 1 0 11.4 11.4Z"}]]]
-      dashboard-html
+      content
       [:script (h/raw "setPiyoTheme(document.documentElement.dataset.theme)")]]])))
+
+(defn page [dashboard-html]
+  (page-document {:title "PiyoDash"
+                  :body-class "dashboard-page"
+                  :nav-href "/solidfoods"
+                  :nav-ja "離乳食"
+                  :nav-en "Solid foods"}
+                 dashboard-html))
+
+(def ^:private group-copy
+  {:staples {:ja "主食" :en "Staples" :icon "🥣"}
+   :vegetables {:ja "野菜" :en "Vegetables" :icon "🥕"}
+   :fruit {:ja "果物" :en "Fruit" :icon "🍎"}
+   :protein {:ja "たんぱく質" :en "Protein" :icon "🥚"}
+   :other {:ja "そのほか" :en "Extras" :icon "🌿"}})
+
+(def ^:private group-order [:staples :vegetables :fruit :protein :other])
+
+(defn- event-date [event zone]
+  (when-let [instant (db/event-instant event)]
+    (.format (DateTimeFormatter/ofPattern "M月d日") (.atZone instant zone))))
+
+(defn- event-datetime [event zone]
+  (when-let [instant (db/event-instant event)]
+    (.format (DateTimeFormatter/ofPattern "M月d日 H:mm") (.atZone instant zone))))
+
+(defn- status-pill [item zone]
+  (if (:tried? item)
+    [:span.status-pill.tried
+     [:span.status-mark "✓"]
+     (event-date (:first-event item) zone)]
+    [:span.status-pill.untried "未記録"]))
+
+(defn- allergen-card [item zone]
+  [:li.allergen-card {:class (if (:tried? item) "is-tried" "is-untried")}
+   [:div.allergen-name
+    [:strong {:lang "ja"} (:ja item)]
+    [:span {:lang "en"} (:en item)]]
+   (status-pill item zone)])
+
+(defn- ingredient-table [items zone]
+  [:div.food-table-wrap
+   [:table.food-table
+    [:thead
+     [:tr
+      [:th "食材 / Ingredient"]
+      [:th "はじめて / First"]
+      [:th "最近 / Latest"]
+      [:th.numeric "回 / Meals"]]]
+    [:tbody
+     (for [item items]
+       [:tr {:key (name (:id item))}
+        [:th {:scope "row"}
+         [:span.food-name {:lang "ja"} (:ja item)]
+         [:span.food-name-en {:lang "en"} (:en item)]]
+        [:td (event-date (:first-event item) zone)]
+        [:td (event-date (:last-event item) zone)]
+        [:td.numeric (:times item)]])]]])
+
+(defn- food-map [items zone]
+  (let [by-group (group-by :group items)]
+    [:div.food-map
+     (for [group group-order
+           :let [group-items (get by-group group)
+                 {:keys [ja en icon]} (get group-copy group)
+                 tried-count (count (filter :tried? group-items))]
+           :when (seq group-items)]
+       [:section.food-group-card {:key (name group) :data-group (name group)}
+        [:header.food-group-heading
+         [:span.food-group-icon {:aria-hidden "true"} icon]
+         [:div
+          [:h3 {:lang "ja"} ja]
+          [:p {:lang "en"} en]]
+         [:span.food-group-count (str tried-count "/" (count group-items))]]
+        [:ul.food-chip-grid
+         (for [item group-items]
+           [:li {:key (name (:id item))
+                 :class (if (:tried? item) "is-tried" "is-untried")}
+            [:span
+             [:strong {:lang "ja"} (:ja item)]
+             [:small {:lang "en"} (:en item)]]
+            [:em (if (:tried? item)
+                   (str "✓ " (event-date (:first-event item) zone))
+                   "まだ")]])]])]))
+
+(defn solid-foods-content [events zone]
+  (let [{:keys [total-events meals ingredients tried untried allergens]} (foods/analyze events)
+        required-allergens (filterv :required? allergens)
+        other-allergens (filterv (complement :required?) allergens)
+        tried-allergens (count (filter :tried? required-allergens))]
+    [:main#solid-foods
+     {"data-on-interval__duration.60s" "@get('/solidfoods/content')"}
+     [:header.food-hero
+      [:p.eyebrow "PIYODASH · SOLID FOODS"]
+      [:h1 {:lang "ja"} "離乳食の記録"]
+      [:p.hero-translation {:lang "en"} "First foods & allergy tracker"]
+      [:div.food-stats
+       [:div [:strong (count tried)] [:span "食材"] [:small "ingredients tried"]]
+       [:div [:strong total-events] [:span "食事"] [:small "meals logged"]]
+       [:div [:strong (str tried-allergens "/" (count required-allergens))]
+        [:span "主要アレルゲン"] [:small "label allergens recorded"]]]]
+
+     [:section.food-section.allergy-section
+      [:div.section-heading
+       [:div
+        [:p.eyebrow "ALLERGY WATCH"]
+        [:h2 {:lang "ja"} "まず確認したいアレルゲン"]
+        [:p.translation {:lang "en"} "Japan’s label-required allergens"]]
+       [:p.section-note "「未記録」は食事メモに見つからないという意味です。アレルギーの有無を示すものではありません。"]]
+      [:ul.allergen-grid (map #(allergen-card % zone) required-allergens)]
+      [:details.other-allergens
+       [:summary "そのほか記録しているアレルゲン / Other tracked allergens"]
+       [:ul.allergen-grid.secondary (map #(allergen-card % zone) other-allergens)]]
+      [:p.source-note
+       "品目は日本の食品表示基準を参照。導入時期や方法は小児科医に確認してください。 "
+       [:a {:href "https://www.caa.go.jp/policies/policy/food_labeling/food_sanitation/allergy/"
+            :target "_blank" :rel "noreferrer"} "消費者庁 ↗"]]]
+
+     [:section.food-section
+      [:div.section-heading
+       [:div
+        [:p.eyebrow "THE FOOD MAP"]
+        [:h2 {:lang "ja"} "ぜんぶの食材リスト"]
+        [:p.translation {:lang "en"} "Every food — tried and still to try"]]
+       [:p.section-count (str (count untried) " left")]]
+      [:div.food-map-legend
+       [:span.legend-tried "✓ 食べた"]
+       [:span.legend-untried "まだ"]]
+      (food-map ingredients zone)]
+
+     [:section.food-section
+      [:div.section-heading
+       [:div
+        [:p.eyebrow "FIRST TASTES"]
+        [:h2 {:lang "ja"} "はじめて食べた日"]
+        [:p.translation {:lang "en"} "First and latest dates detected from meal notes"]]
+       [:p.section-count (str (count tried) " tried")]]
+      (ingredient-table tried zone)]
+
+     [:section.food-section.recent-meals
+      [:div.section-heading
+       [:div
+        [:p.eyebrow "RECENT NOTES"]
+        [:h2 {:lang "ja"} "最近の離乳食"]
+        [:p.translation {:lang "en"} "Original PiyoLog notes"]]]
+      [:ol.meal-notes
+       (for [event (take 12 (reverse meals))]
+         [:li
+          [:time (event-datetime event zone)]
+          [:p (:memo event)]])]]]))
+
+(defn unavailable-solid-foods [message]
+  [:main#solid-foods
+   [:header.food-hero
+    [:p.eyebrow "PIYODASH · SOLID FOODS"]
+    [:h1 {:lang "ja"} "離乳食の記録"]
+    [:p.hero-translation {:lang "en"} "First foods & allergy tracker"]]
+   [:section.food-section.empty-foods
+    [:h2 {:lang "ja"} "データを読み込めません"]
+    [:p.translation {:lang "en"} "Could not load solid-food data"]
+    [:p message]]])
+
+(defn solid-foods-page [content]
+  (page-document {:title "離乳食 · PiyoDash"
+                  :body-class "solid-foods-page"}
+                 content))
 
 (defn render [value]
   (str (h/html value)))
