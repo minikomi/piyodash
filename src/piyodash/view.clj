@@ -218,7 +218,8 @@
   (str
    "<!doctype html>"
    (h/html
-    [:html {:lang "ja"}
+    [:html (cond-> {:lang "ja"}
+             body-class (assoc :class body-class))
      [:head
       [:meta {:charset "utf-8"}]
       [:meta {:name "viewport"

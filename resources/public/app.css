@@ -216,6 +216,14 @@ h2 {
 
 /* Solid-food history ------------------------------------------------------ */
 
+html.solid-foods-page,
+body.solid-foods-page {
+  height: auto;
+  min-height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
 body.solid-foods-page {
   overflow: auto;
   background:
