@@ -447,6 +447,43 @@ body.solid-foods-page {
   .best-time { font-size: clamp(1.8rem, calc(2.6vmin + 10px), 2.7rem); }
 }
 
+@media (min-width: 900px) {
+  #solid-foods {
+    width: min(1440px, 100%);
+    padding-top: calc(env(safe-area-inset-top) + 3rem);
+    padding-inline: clamp(1.5rem, 3vw, 2.75rem);
+  }
+
+  .food-hero {
+    margin-bottom: 0.8rem;
+    padding: 2rem 2.5rem;
+  }
+
+  .food-hero h1 { font-size: clamp(3.4rem, 5vw, 5rem); }
+  .food-stats { margin-top: 1.5rem; }
+  .food-stats > div { padding-block: 0.8rem; }
+
+  .food-section {
+    margin-top: 0.8rem;
+    padding: 1.75rem 2rem;
+  }
+
+  .section-heading { margin-bottom: 1rem; }
+  .allergen-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .allergen-card { padding: 0.7rem 0.75rem; }
+
+  .food-map { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .food-chip-grid li { padding-block: 0.55rem; }
+
+  .meal-notes {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 2rem;
+  }
+
+  .meal-notes li { grid-template-columns: 6.7rem 1fr; }
+}
+
 @media (orientation: portrait) {
   .elapsed { font-size: clamp(2.7rem, 10vw, 7rem); }
 }
