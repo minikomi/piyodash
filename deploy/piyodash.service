@@ -1,0 +1,20 @@
+[Unit]
+Description=Private PiyoDash family dashboard
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=exedev
+Group=exedev
+WorkingDirectory=/opt/piyodash
+Environment=PORT=8000
+Environment=TZ=Asia/Tokyo
+ExecStart=/usr/local/bin/clojure -M:run
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
