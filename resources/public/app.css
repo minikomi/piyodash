@@ -455,13 +455,40 @@ body.solid-foods-page {
   }
 
   .food-hero {
+    display: grid;
+    grid-template-columns: minmax(18rem, 0.8fr) minmax(34rem, 1.5fr);
+    grid-template-rows: auto auto auto;
+    align-items: center;
+    column-gap: 2rem;
     margin-bottom: 0.8rem;
-    padding: 2rem 2.5rem;
+    padding: 1.15rem 1.5rem;
   }
 
-  .food-hero h1 { font-size: clamp(3.4rem, 5vw, 5rem); }
-  .food-stats { margin-top: 1.5rem; }
-  .food-stats > div { padding-block: 0.8rem; }
+  .food-hero > .eyebrow { grid-column: 1; grid-row: 1; margin-bottom: 0.25rem; }
+  .food-hero h1 {
+    grid-column: 1;
+    grid-row: 2;
+    font-size: clamp(2.4rem, 3.4vw, 3.6rem);
+  }
+  .food-hero > .hero-translation {
+    grid-column: 1;
+    grid-row: 3;
+    margin-top: 0.3rem;
+    font-size: 0.9rem;
+  }
+  .food-stats {
+    grid-column: 2;
+    grid-row: 1 / 4;
+    align-self: stretch;
+    margin-top: 0;
+  }
+  .food-stats > div {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding-block: 0.65rem;
+  }
+  .food-stats strong { font-size: clamp(1.9rem, 3vw, 2.7rem); }
 
   .food-section {
     margin-top: 0.8rem;
